@@ -1044,6 +1044,11 @@ static int vmd_configure_membar1_membar2(struct vmd_dev *vmd,
 			return -EINVAL;
 		}
 
+		if (mbar2_ofs + bus1_mbar2_ofs <= mbar2_ofs) {
+			pci_err(vmd->dev, "MEMBARS are overlapping. Aborting.\n");
+			return -EINVAL;
+		}
+
 		/*
 		 * Resize BUS MEMBAR1 and MEMBAR2 ranges to make space
 		 * for BUS1 owned devices by adjusting range end with values
