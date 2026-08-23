@@ -654,7 +654,7 @@ static void vmd_domain_reset(struct vmd_dev *vmd)
 
 static void vmd_attach_resources(struct vmd_dev *vmd)
 {
-	write_lock(&vmd->dev->resource_lock);
+	pci_lock_rescan_remove();
 	vmd->dev->resource[VMD_MEMBAR1].child = &vmd->resources[VMD_RES_MBAR_1];
 	vmd->dev->resource[VMD_MEMBAR2].child = &vmd->resources[VMD_RES_MBAR_2];
 
@@ -664,12 +664,12 @@ static void vmd_attach_resources(struct vmd_dev *vmd)
 		vmd->resources[VMD_RES_MBAR_2].sibling =
 			&vmd->resources[VMD_RES_BUS1_MBAR_2];
 	}
-	write_unlock(&vmd->dev->resource_lock);
+	pci_unlock_rescan_remove();
 }
 
 static void vmd_detach_resources(struct vmd_dev *vmd)
 {
-	write_lock(&vmd->dev->resource_lock);
+	pci_lock_rescan_remove();
 	vmd->dev->resource[VMD_MEMBAR1].child = NULL;
 	vmd->dev->resource[VMD_MEMBAR2].child = NULL;
 
@@ -677,7 +677,7 @@ static void vmd_detach_resources(struct vmd_dev *vmd)
 		vmd->resources[VMD_RES_MBAR_1].sibling = NULL;
 		vmd->resources[VMD_RES_MBAR_2].sibling = NULL;
 	}
-	write_unlock(&vmd->dev->resource_lock);
+	pci_unlock_rescan_remove();
 }
 
 static int vmd_get_phys_offsets(struct vmd_dev *vmd, bool native_hint,
