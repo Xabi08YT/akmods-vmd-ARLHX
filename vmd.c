@@ -1447,6 +1447,9 @@ static void vmd_remove(struct pci_dev *dev)
 	vmd_cleanup_srcu(vmd);
 	vmd_detach_resources(vmd);
 	vmd_remove_irq_domain(vmd);
+
+	pci_free_irq_vectors(vmd->dev);
+
 	ida_free(&vmd_instance_ida, vmd->instance);
 	pci_bus_release_emul_domain_nr(vmd->sysdata.domain);
 }
