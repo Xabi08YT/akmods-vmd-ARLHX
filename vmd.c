@@ -667,6 +667,7 @@ static void vmd_attach_resources(struct vmd_dev *vmd)
 
 static void vmd_detach_resources(struct vmd_dev *vmd)
 {
+	write_lock(&vmd->dev->resource_lock);
 	vmd->dev->resource[VMD_MEMBAR1].child = NULL;
 	vmd->dev->resource[VMD_MEMBAR2].child = NULL;
 
@@ -674,6 +675,7 @@ static void vmd_detach_resources(struct vmd_dev *vmd)
 		vmd->resources[VMD_RES_MBAR_1].sibling = NULL;
 		vmd->resources[VMD_RES_MBAR_2].sibling = NULL;
 	}
+	write_unlock(&vmd->dev->resource_lock);
 }
 
 static int vmd_get_phys_offsets(struct vmd_dev *vmd, bool native_hint,
