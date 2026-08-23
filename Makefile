@@ -1,11 +1,9 @@
 _SRC := $(if $(src),$(src),.)
 include $(_SRC)/Makefile.vars # AKMOD can be annoying so preventing his silent context change
 
-DKMS_ROOT_PATH  := /usr/src/msi_ec-$(VERSION)
-
 KERNELRELEASE := $(shell uname -r)
 
-KMOD_DIR        := /lib/modules/$(KERNELRELEASE)/updates/drivers/platform/x86
+KMOD_DIR        := /lib/modules/$(KERNELRELEASE)/extra
 
 ccflags-y := -std=gnu11 -Wno-declaration-after-statement
 
@@ -20,31 +18,26 @@ clean:
 	@$(MAKE) -C /lib/modules/$(KERNELRELEASE)/build M=$(CURDIR) clean
 
 load:
-	insmod msi-ec.ko
-
-load-debug:
-	insmod msi-ec.ko debug=1
+	insmod vmd.ko
 
 unload:
-	-rmmod msi-ec
+	-rmmod vmd
 
 reload: unload load
 
-reload-debug: unload load-debug
-
 install:
 	mkdir -p $(KMOD_DIR)
-	cp msi-ec.ko $(KMOD_DIR)
+	cp vmd.ko $(KMOD_DIR)
 	depmod -a
-	echo msi-ec > /etc/modules-load.d/msi-ec.conf
-	modprobe -v msi-ec
+	echo vmd > /etc/modules-load.d/vmd.conf
+	modprobe -v vmd
 
 uninstall:
-	-modprobe -rv msi-ec
-	rm -f $(KMOD_DIR)/msi-ec.ko
+	-modprobe -rv vmd
+	rm -f $(KMOD_DIR)/vmd.ko
 	-rmdir -p $(KMOD_DIR) > /dev/null 2>&1
 	depmod -a
-	rm -f /etc/modules-load.d/msi-ec.conf
+	rm -f /etc/modules-load.d/vmd.conf
 
 dev: modules unload load
 
