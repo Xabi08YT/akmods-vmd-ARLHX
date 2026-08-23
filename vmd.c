@@ -449,9 +449,10 @@ static void __iomem *vmd_cfg_addr(struct vmd_dev *vmd, struct pci_bus *bus,
 	 * reconfiguration, but cfg accesses must target the original BUS1
 	 * restricted range start.
 	 */
-	if (vmd->bus1_rootbus && bus->number == VMD_PRIMARY_BUS1)
+	if (vmd->bus1_rootbus && bus->number == VMD_PRIMARY_BUS1) {
 		int bus_offset = bus->number - VMD_PRIMARY_BUS1;
         bus_number = vmd->busn_start[VMD_BUS_1] + bus_offset;
+	}
 	else
 		bus_number = bus->number;
 
@@ -801,8 +802,10 @@ static int vmd_alloc_irqs(struct vmd_dev *vmd)
 
 	vmd->irqs = devm_kcalloc(&dev->dev, vmd->msix_count, sizeof(*vmd->irqs),
 				 GFP_KERNEL);
-	if (!vmd->irqs)
+	if (!vmd->irqs) {
+		pci_free_irq_vectors(dev);
 		return -ENOMEM;
+	}
 
 	for (i = 0; i < vmd->msix_count; i++) {
 		err = init_srcu_struct(&vmd->irqs[i].srcu);
