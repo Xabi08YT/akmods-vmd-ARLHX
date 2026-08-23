@@ -1430,7 +1430,18 @@ static int vmd_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	return 0;
 
  out_release_instance:
-	ida_free(&vmd_instance_ida, vmd->instance);
+    if (vmd->irqs) {
+        pci_free_irq_vectors(vmd->dev);
+        vmd->irqs = NULL;
+    }
+
+    if (vmd->irq_domain) {
+        vmd_remove_irq_domain(vmd);
+        vmd->irq_domain = NULL;
+    }
+
+    ida_free(&vmd_instance_ida, vmd->instance);
+
 	return err;
 }
 
