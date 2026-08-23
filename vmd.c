@@ -557,8 +557,10 @@ static struct acpi_device *vmd_acpi_find_companion(struct pci_dev *pci_dev)
 	 */
 	if (vmd->bus1_rootbus && bridge->bus == vmd->bus[VMD_BUS_1]) {
 		bridge_bus_number = vmd->busn_start[VMD_BUS_1];
-		if (pci_bus_number == VMD_PRIMARY_BUS1)
-			pci_bus_number = vmd->busn_start[VMD_BUS_1];
+		if (pci_bus_number >= VMD_PRIMARY_BUS1) {
+			pci_bus_number = vmd->busn_start[VMD_BUS_1] +
+							(pci_bus_number - VMD_PRIMARY_BUS1);
+		}
 	}
 
 	busnr = pci_bus_number - bridge_bus_number;
