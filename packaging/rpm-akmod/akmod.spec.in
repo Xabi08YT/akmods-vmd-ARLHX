@@ -113,3 +113,5 @@ rm -rf $RPM_BUILD_ROOT
 
 # Changelog will be injected by Makefile under here.
 %changelog
+* Sat Aug 23 2026 GitHub Actions <no-reply@github.com> - 0.8-1.202608231705gitfd0d76c
+- Initial release: VMD support for Arrow Lake-HX (BUS1 rootbus)
