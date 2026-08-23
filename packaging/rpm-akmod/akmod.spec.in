@@ -86,10 +86,10 @@ for kernel_version in %{?kernel_versions}; do
 done
 
 mkdir -p %{buildroot}%{_sysconfdir}/modules-load.d/
-install -p -m 0644 %{SOURCE1} %{buildroot}%{_sysconfdir}/modules-load.d/msi-ec.conf
+install -p -m 0644 %{SOURCE1} %{buildroot}%{_sysconfdir}/modules-load.d/vmd.conf
 
 mkdir -p %{buildroot}%{_sysconfdir}/depmod.d/
-install -p -m 0644 %{SOURCE2} %{buildroot}%{_sysconfdir}/depmod.d/msi-ec.conf
+install -p -m 0644 %{SOURCE2} %{buildroot}%{_sysconfdir}/depmod.d/vmd.conf
 
 %{?akmod_install}
 
