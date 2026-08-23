@@ -1300,8 +1300,8 @@ static int vmd_enable_domain(struct vmd_dev *vmd, unsigned long features)
 	ret = vmd_create_bus(vmd, VMD_BUS_0, sd, offset, VMD_PRIMARY_BUS0);
 	if (ret) {
 		pci_err(vmd->dev, "Can't create bus: %d\n", ret);
-		pci_bus_release_emul_domain_nr(sd->domain);
-		vmd_remove_irq_domain(vmd);
+		//pci_bus_release_emul_domain_nr(sd->domain);
+		//vmd_remove_irq_domain(vmd);
 		return ret;
 	}
 
