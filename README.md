@@ -8,3 +8,7 @@ THIS MODULE IS ONLY PROVIDED AS A WORKAROUND AND MAY CAUSE PROBLEMS TO YOUR SYST
 
 ## For Intel
 Please merge the support into upstream quickly T-T.
+
+## Installing
+
+All isntall instructions can be found here: [https://copr.fedorainfracloud.org/coprs/xabi08/Arrow-Lake-Packages/](https://copr.fedorainfracloud.org/coprs/xabi08/Arrow-Lake-Packages/)
