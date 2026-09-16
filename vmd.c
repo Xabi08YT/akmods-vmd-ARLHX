@@ -122,7 +122,28 @@ enum vmd_features {
 	 * Starting from Intel Arrow Lake, VMD devices have their VMD root ports
 	 * on the additional BUS1 root bus.
 	 */
-	VMD_FEAT_HAS_BUS1_ROOTBUS	= (1 << 6)
+	VMD_FEAT_HAS_BUS1_ROOTBUS	= (1 << 6),
+
+	/*
+	 * Meteor Lake VMD (0x7d0b) is affected by erratum MTL016: the VMD can
+	 * signal its MSI before the posted writes carrying a child device's
+	 * DMA data have landed in memory, so the demuxed handler can observe
+	 * a not-yet-coherent completion queue and miss the completion
+	 * entirely ("timeout, completion polled"). The documented workaround
+	 * is a dummy config-space read of the MSI initiator (the child
+	 * device) before handling the interrupt, which flushes the posted
+	 * writes per PCIe ordering rules. Diagnosed by Kai-Heng Feng,
+	 * implemented by Rickey Bartlett (linux-pci, 2026-08-25:
+	 * 20260825043220.9047-1-subtexel@gmail.com).
+	 *
+	 * Enabled below ONLY for 0xad0b (Arrow Lake). Tested on a Dell
+	 * Alienware 16X Aurora (AC16251), VMD 8086:ad0b: 0 "completion
+	 * polled" / 0 NVMe resets across repeated boots and sustained I/O,
+	 * versus routine occurrences before. Not enabled here for 0x7d0b
+	 * (Meteor Lake) since we have not tested that hardware ourselves;
+	 * see the upstream thread for that case.
+	 */
+	VMD_FEAT_INTERRUPT_QUIRK	= (1 << 7)
 };
 
 #define VMD_BIOS_PM_QUIRK_LTR	0x1003	/* 3145728 ns */
@@ -150,11 +171,18 @@ static DEFINE_RAW_SPINLOCK(list_lock);
  * Every MSI/MSI-X IRQ requested for a device in a VMD domain will be mapped to
  * a VMD IRQ using this structure.
  */
+struct vmd_dev;
+
+static void __iomem *vmd_cfg_addr(struct vmd_dev *vmd, struct pci_bus *bus,
+				  unsigned int devfn, int reg, int len);
+
 struct vmd_irq {
 	struct list_head	node;
 	struct vmd_irq_list	*irq;
 	bool			enabled;
 	unsigned int		virq;
+	/* MTL016/ad0b: direccion de config space a leer antes de demuxear */
+	void __iomem		*flush_addr;
 };
 
 /**
@@ -170,6 +198,8 @@ struct vmd_irq_list {
 	struct srcu_struct	srcu;
 	unsigned int		count;
 	unsigned int		virq;
+	/* MTL016/ad0b: serializa la lectura de flush contra cfg_lock */
+	struct vmd_dev		*vmd;
 };
 
 struct vmd_dev {
@@ -190,6 +220,8 @@ struct vmd_dev {
 	char			*name;
 	int			instance;
 	bool			bus1_rootbus;
+	/* MTL016/ad0b: ver VMD_FEAT_INTERRUPT_QUIRK en el enum vmd_features */
+	bool			interrupt_quirk;
 };
 
 static inline struct vmd_dev *vmd_from_bus(struct pci_bus *bus)
@@ -327,6 +359,13 @@ static int vmd_msi_alloc(struct irq_domain *domain, unsigned int virq,
 		INIT_LIST_HEAD(&vmdirq->node);
 		vmdirq->irq = vmd_next_irq(vmd, desc);
 		vmdirq->virq = virq + i;
+		if (vmd->interrupt_quirk) {
+			struct pci_dev *pdev = msi_desc_to_pci_dev(desc);
+
+			vmdirq->flush_addr = vmd_cfg_addr(vmd, pdev->bus,
+							  pdev->devfn,
+							  PCI_VENDOR_ID, 2);
+		}
 
 		irq_domain_set_info(domain, virq + i, vmdirq->irq->virq,
 				    &vmd_msi_controller, vmdirq,
@@ -783,8 +822,14 @@ static irqreturn_t vmd_irq(int irq, void *data)
 	int idx;
 
 	idx = srcu_read_lock(&irqs->srcu);
-	list_for_each_entry_rcu(vmdirq, &irqs->irq_list, node)
+	list_for_each_entry_rcu(vmdirq, &irqs->irq_list, node) {
+		/* MTL016/ad0b: flushea las escrituras posteadas del iniciador */
+		if (vmdirq->flush_addr) {
+			guard(raw_spinlock)(&irqs->vmd->cfg_lock);
+			readw(vmdirq->flush_addr);
+		}
 		generic_handle_irq(vmdirq->virq);
+	}
 	srcu_read_unlock(&irqs->srcu, idx);
 
 	return IRQ_HANDLED;
@@ -817,6 +862,7 @@ static int vmd_alloc_irqs(struct vmd_dev *vmd)
 			return err;
 
 		INIT_LIST_HEAD(&vmd->irqs[i].irq_list);
+		vmd->irqs[i].vmd = vmd;
 		vmd->irqs[i].virq = pci_irq_vector(dev, i);
 		err = devm_request_irq(&dev->dev, vmd->irqs[i].virq,
 				       vmd_irq, IRQF_NO_THREAD,
@@ -1225,6 +1271,8 @@ static int vmd_enable_domain(struct vmd_dev *vmd, unsigned long features)
 	resource_size_t membar2_offset = 0x2000;
 	int ret;
 
+	vmd->interrupt_quirk = !!(features & VMD_FEAT_INTERRUPT_QUIRK);
+
 	/*
 	 * Shadow registers may exist in certain VMD device ids which allow
 	 * guests to correctly assign host physical addresses to the root ports
@@ -1534,7 +1582,9 @@ static const struct pci_device_id vmd_ids[] = {
 	{PCI_VDEVICE(INTEL, 0x7d0b),
 		.driver_data = VMD_FEATS_CLIENT,},
 	{PCI_VDEVICE(INTEL, 0xad0b),
-		.driver_data = VMD_FEATS_CLIENT,},
+		/* Arrow Lake: erratum MTL016 tambien afecta a este ID, ver
+		 * el comentario de VMD_FEAT_INTERRUPT_QUIRK mas arriba. */
+		.driver_data = VMD_FEATS_CLIENT | VMD_FEAT_INTERRUPT_QUIRK,},
 	{PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_VMD_9A0B),
 		.driver_data = VMD_FEATS_CLIENT,},
 	{PCI_VDEVICE(INTEL, 0xb60b),
