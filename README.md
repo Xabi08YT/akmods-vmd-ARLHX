@@ -1,4 +1,4 @@
-# MODULE IS EXPERIMENTAL AND WILL REGULARLY BREAK
+# MODULE IS EXPERIMENTAL AND WILL REGULARLY BREAK. IT SHOULD NOT BE USED. NEVER UNLESS IT IS NOT YOUR BOOT DRIVE. REPO IS THEREFORE PUT TO ARCHIVE MODE.
 
 ## Description
 A repository to provide an akmods version of a manually patched VMD module for the linux kernel to add support for the BUS_RESTRICT 3 value. This repo uses the patches of Szymon Durawa from Intel as a base, and corrects some quirks from sashiko. It only aims to provide support until these patches are merged in upstream. It was originally made only for me but when I saw that many peaple had this problem I thought of releasing it to the public.
